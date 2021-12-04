@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const Blockchain = require('./blockchain');
-const bitcoin = new Blockchain();
+const socialchain = new Blockchain();
 const uuid = require('uuid').v1;
 const port = process.argv[2];
 const rp = require('request-promise');
@@ -11,26 +11,21 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.get('/blockchain', function (req, res) {
-	res.send(bitcoin);
+	res.send(socialchain);
 });
 
 app.post('/transaction', function (req, res) {
 	const newTransaction = req.body;
-	const blockIndex = bitcoin.addTransactionToPendingTransactions(newTransaction);
+	const blockIndex = socialchain.addTransactionToPendingTransactions(newTransaction);
 	res.json({ note: `Transaction will be added in block ${blockIndex}.` });
-});
-app.post('/socit', function (req, res) {
-	const newSocit = req.body;
-	const blockIndex = bitcoin.addSocitToPendingSOCİT(newSocit);
-	res.json({ note: `Socit will be added in block ${blockIndex}.` });
 });
 
 app.post('/transaction/broadcast', function (req, res) {
-	const newTransaction = bitcoin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
-	bitcoin.addTransactionToPendingTransactions(newTransaction);
+	const newTransaction = socialchain.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
+	socialchain.addTransactionToPendingTransactions(newTransaction);
 
 	const requestPromises = [];
-	bitcoin.networkNodes.forEach(networkNodeUrl => {
+	socialchain.networkNodes.forEach(networkNodeUrl => {
 		const requestOptions = {
 			uri: networkNodeUrl + '/transaction',
 			method: 'POST',
@@ -46,20 +41,71 @@ app.post('/transaction/broadcast', function (req, res) {
 			res.json({ note: 'Transaction created and broadcast successfully.' });
 		});
 });
+/*
+app.post('/socit', function (req, res) {
+	const newSocit = req.body;
+	const blockIndex = socialchain.addSocitToPendingSocit(newSocit);
+	res.json({ note: `Socit will be added in block ${blockIndex}.` });
+});
+*/
+app.post('/socit/broadcast', function (req, res) {
+	const user = socialchain.userWallet;
+	let saved = false;
+	for (let i = 0; i < user.length; i++) {
+		if (user[i].username === req.body.sender && user[i].privateKey === req.body.privateKey) {
+			saved = true;
+			socitSaved();
+			break;
+		}
+		else
+			saved = false;
+	}
+	if (saved == false) {
+		socitNotSave();
+	}
+
+	function socitSaved() {
+		const newSocit = socialchain.createNewSocit(req.body.message, req.body.sender);
+		socialchain.addSocitToPendingSocit(newSocit);
+		const requestPromises = [];
+		socialchain.networkNodes.forEach(networkNodeUrl => {
+			const requestOptions = {
+				uri: networkNodeUrl + '/socit',
+				method: 'POST',
+				body: newSocit,
+				json: true
+			};
+			requestPromises.push(rp(requestOptions));
+		});
+		Promise.all(requestPromises)
+			.then(data => {
+				res.json({ note: 'Socit created and broadcast successfully.' });
+			});
+	}
+	function socitNotSave() {
+		res.json({ note: 'Socit not saved' });
+	}
+
+
+
+});
+
+
+
 
 app.get('/mine', function (req, res) {
-	const lastBlock = bitcoin.getLastBlock();
+	const lastBlock = socialchain.getLastBlock();
 	const previousBlockHash = lastBlock['hash'];
 	const currentBlockData = {
-		transactions: bitcoin.pendingTransactions,
+		transactions: socialchain.pendingTransactions,
 		index: lastBlock['index'] + 1
 	};
-	const nonce = bitcoin.proofOfWork(previousBlockHash, currentBlockData);
-	const blockHash = bitcoin.hashBlock(previousBlockHash, currentBlockData, nonce);
-	const newBlock = bitcoin.createNewBlock(nonce, previousBlockHash, blockHash);
+	const nonce = socialchain.proofOfWork(previousBlockHash, currentBlockData);
+	const blockHash = socialchain.hashBlock(previousBlockHash, currentBlockData, nonce);
+	const newBlock = socialchain.createNewBlock(nonce, previousBlockHash, blockHash);
 
 	const requestPromises = [];
-	bitcoin.networkNodes.forEach(networkNodeUrl => {
+	socialchain.networkNodes.forEach(networkNodeUrl => {
 		const requestOptions = {
 			uri: networkNodeUrl + '/receive-new-block',
 			method: 'POST',
@@ -73,7 +119,7 @@ app.get('/mine', function (req, res) {
 	Promise.all(requestPromises)
 		.then(data => {
 			const requestOptions = {
-				uri: bitcoin.currentNodeUrl + '/transaction/broadcast',
+				uri: socialchain.currentNodeUrl + '/transaction/broadcast',
 				method: 'POST',
 				body: {
 					amount: 12.5,
@@ -98,13 +144,13 @@ app.get('/', function (req, res) {
 
 app.post('/receive-new-block', function (req, res) {
 	const newBlock = req.body.newBlock;
-	const lastBlock = bitcoin.getLastBlock();
+	const lastBlock = socialchain.getLastBlock();
 	const correctHash = lastBlock.hash === newBlock.previousBlockHash;
 	const correctIndex = lastBlock['index'] + 1 === newBlock['index'];
 
 	if (correctHash && correctIndex) {
-		bitcoin.chain.push(newBlock);
-		bitcoin.pendingTransactions = [];
+		socialchain.chain.push(newBlock);
+		socialchain.pendingTransactions = [];
 		res.json({
 			note: 'New block received and accepted.',
 			newBlock: newBlock
@@ -119,10 +165,10 @@ app.post('/receive-new-block', function (req, res) {
 
 app.post('/register-and-broadcast-node', function (req, res) {
 	const newNodeUrl = req.body.newNodeUrl;
-	if (bitcoin.networkNodes.indexOf(newNodeUrl) == -1) bitcoin.networkNodes.push(newNodeUrl);
+	if (socialchain.networkNodes.indexOf(newNodeUrl) == -1) socialchain.networkNodes.push(newNodeUrl);
 
 	const regNodesPromises = [];
-	bitcoin.networkNodes.forEach(networkNodeUrl => {
+	socialchain.networkNodes.forEach(networkNodeUrl => {
 		const requestOptions = {
 			uri: networkNodeUrl + '/register-node',
 			method: 'POST',
@@ -138,7 +184,7 @@ app.post('/register-and-broadcast-node', function (req, res) {
 			const bulkRegisterOptions = {
 				uri: newNodeUrl + '/register-nodes-bulk',
 				method: 'POST',
-				body: { allNetworkNodes: [...bitcoin.networkNodes, bitcoin.currentNodeUrl] },
+				body: { allNetworkNodes: [...socialchain.networkNodes, socialchain.currentNodeUrl] },
 				json: true
 			};
 
@@ -152,9 +198,9 @@ app.post('/register-and-broadcast-node', function (req, res) {
 
 app.post('/register-node', function (req, res) {
 	const newNodeUrl = req.body.newNodeUrl;
-	const nodeNotAlreadyPresent = bitcoin.networkNodes.indexOf(newNodeUrl) == -1;
-	const notCurrentNode = bitcoin.currentNodeUrl !== newNodeUrl;
-	if (nodeNotAlreadyPresent && notCurrentNode) bitcoin.networkNodes.push(newNodeUrl);
+	const nodeNotAlreadyPresent = socialchain.networkNodes.indexOf(newNodeUrl) == -1;
+	const notCurrentNode = socialchain.currentNodeUrl !== newNodeUrl;
+	if (nodeNotAlreadyPresent && notCurrentNode) socialchain.networkNodes.push(newNodeUrl);
 	res.json({ note: 'New node registered successfully.' });
 });
 
@@ -162,9 +208,9 @@ app.post('/register-node', function (req, res) {
 app.post('/register-nodes-bulk', function (req, res) {
 	const allNetworkNodes = req.body.allNetworkNodes;
 	allNetworkNodes.forEach(networkNodeUrl => {
-		const nodeNotAlreadyPresent = bitcoin.networkNodes.indexOf(networkNodeUrl) == -1;
-		const notCurrentNode = bitcoin.currentNodeUrl !== networkNodeUrl;
-		if (nodeNotAlreadyPresent && notCurrentNode) bitcoin.networkNodes.push(networkNodeUrl);
+		const nodeNotAlreadyPresent = socialchain.networkNodes.indexOf(networkNodeUrl) == -1;
+		const notCurrentNode = socialchain.currentNodeUrl !== networkNodeUrl;
+		if (nodeNotAlreadyPresent && notCurrentNode) socialchain.networkNodes.push(networkNodeUrl);
 	});
 
 	res.json({ note: 'Bulk registration successful.' });
@@ -172,7 +218,7 @@ app.post('/register-nodes-bulk', function (req, res) {
 
 app.get('/consensus', function (req, res) {
 	const requestPromises = [];
-	bitcoin.networkNodes.forEach(networkNodeUrl => {
+	socialchain.networkNodes.forEach(networkNodeUrl => {
 		const requestOptions = {
 			uri: networkNodeUrl + '/blockchain',
 			method: 'GET',
@@ -182,7 +228,7 @@ app.get('/consensus', function (req, res) {
 	});
 	Promise.all(requestPromises)
 		.then(blockchains => {
-			const currentChainLengt = bitcoin.chain.length;
+			const currentChainLengt = socialchain.chain.length;
 			let maxChainLengt = currentChainLengt;
 			let newLongestChain = null;
 			let newPendingTransactions = null;
@@ -194,28 +240,54 @@ app.get('/consensus', function (req, res) {
 					newPendingTransactions = blockchain.pendingTransactions;
 				}
 			});
-			if (!newLongestChain || (newLongestChain && !bitcoin.chainIsValid(newLongestChain))) {
+			if (!newLongestChain || (newLongestChain && !socialchain.chainIsValid(newLongestChain))) {
 				res.json({
 					note: 'Current chain has not been replaced',
-					chain: bitcoin.chain
+					chain: socialchain.chain
 				});
 			}
-			else if (newLongestChain && bitcoin.chainIsValid(newLongestChain)) {
-				bitcoin.chain = newLongestChain;
-				bitcoin.pendingTransactions = newPendingTransactions;
+			else if (newLongestChain && socialchain.chainIsValid(newLongestChain)) {
+				socialchain.chain = newLongestChain;
+				socialchain.pendingTransactions = newPendingTransactions;
 				res.json({
 					note: 'This chain has been replaced',
-					chain: bitcoin.chain,
+					chain: socialchain.chain,
 				});
 			}
 		});
+});
+
+
+/////////////////////////////////////////////////WALLET//////////////////////////////////////////
+
+app.post('/wallet', function (req, res) {
+	let username = req.body.username;
+	const message = socialchain.createNewWallet(username);
+	res.json({
+		note: message
+	});
 
 });
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////EXPLORER//////////////////////////////////////////
 app.get('/block/:blockHash', function (req, res) {
 	const blockHash = req.params.blockHash;
-	const correctBlock = bitcoin.getBlock(blockHash);
+	const correctBlock = socialchain.getBlock(blockHash);
 	res.json({
 		block: correctBlock
 	});
@@ -223,30 +295,34 @@ app.get('/block/:blockHash', function (req, res) {
 
 app.get('/transaction/:transactionId', function (req, res) {
 	const transactionId = req.params.transactionId;
-	const trasactionData = bitcoin.getTransaction(transactionId);
+	const trasactionData = socialchain.getTransaction(transactionId);
 	res.json({
 		transaction: trasactionData.transaction,
 		block: trasactionData.block
 	});
 });
 
-app.get('/address/:address', function (req, res) {
+app.get('/transactions/:address', function (req, res) {
 	const address = req.params.address;
-	const addressData = bitcoin.getAddressData(address);
+	const addressData = socialchain.getAddressData(address);
 	res.json({
-		addressData: addressData
+		addressData: addressData.addressTransactions
 	});
 });
-
-app.get('/block-explorer', function (req, res) {
-	res.sendFile('./block-explorer/index.html', { root: __dirname });
+app.get('/socits/:address', function (req, res) {
+	const address = req.params.address;
+	const socitData = socialchain.getSocitData(address);
+	res.json({
+		socitData: socitData
+	});
 });
-
-
-
-
-
-
+app.get('/balance/:address', function (req, res) {
+	const address = req.params.address;
+	const addressData = socialchain.getAddressData(address);
+	res.json({
+		addressData: addressData.addressBalance
+	});
+});
 
 
 

@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
+    "nodemodule": "^0.3.0",
     "nodemon": "^2.0.13",
     "request": "^2.88.2",
     "request-promise": "^4.2.6",

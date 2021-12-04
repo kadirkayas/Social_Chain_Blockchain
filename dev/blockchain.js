@@ -6,10 +6,22 @@ const uuid = require('uuid').v1;
 function Blockchain() {
     this.chain = [];
     this.pendingTransactions = [];
-
+    this.pendingSocit = [];
     this.currentNodeUrl = currentNodeUrl;
     this.networkNodes = [];
-    this.createNewBlock(100, '0', '0');
+    this.userWallet = [
+        {
+            username: "kadir",
+            privateKey: "admasdsadasd"
+        },
+        {
+            username: "ikikadir",
+            privateKey: "asdadsaghgre"
+        }
+    ];
+
+
+this.createNewBlock(100, '0', '0');
 }
 
 //yeni block ekleme fonksiyonu
@@ -19,7 +31,7 @@ Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) 
         index: this.chain.length + 1,
         timestamp: Date.now(),
         transactions: this.pendingTransactions,
-        socits:this.pendingSocit,
+        socits: this.pendingSocit,
         nonce: nonce,
         hash: hash,
         previousBlockHash: previousBlockHash
@@ -56,14 +68,14 @@ Blockchain.prototype.addTransactionToPendingTransactions = function (transaction
 //yeni socit işlemi oluşturma fonksiyonu
 Blockchain.prototype.createNewSocit = function (message, sender) {
     const newSocit = {
-        message:message,
+        message: message,
         sender: sender,
         socitId: uuid().split('-').join('')
     };
     return newSocit;
 };
 //yeni sociti pendinge alma fonklsiyonu
-Blockchain.prototype.addSocitToPendingSOCİT = function (socitObj) {
+Blockchain.prototype.addSocitToPendingSocit = function (socitObj) {
     this.pendingSocit.push(socitObj);
     return this.getLastBlock()['index'] + 1;
 };
@@ -137,30 +149,68 @@ Blockchain.prototype.getTransaction = function (transactionId) {
     };
 };
 //adress işlemlerinin ve net bakiyenin sorgulandığı yer
-Blockchain.prototype.getAddressData = function(address) {
-	const addressTransactions = [];
-	this.chain.forEach(block => {
-		block.transactions.forEach(transaction => {
-			if(transaction.sender === address || transaction.recipient === address) {
-				addressTransactions.push(transaction);
-			};
-		});
-	});
+Blockchain.prototype.getAddressData = function (address) {
+    const addressTransactions = [];
+    this.chain.forEach(block => {
+        block.transactions.forEach(transaction => {
+            if (transaction.sender === address || transaction.recipient === address) {
+                addressTransactions.push(transaction);
+            };
+        });
+    });
 
-	let balance = 0;
-	addressTransactions.forEach(transaction => {
-		if (transaction.recipient === address) balance += transaction.amount;
-		else if (transaction.sender === address) balance -= transaction.amount;
-	});
+    let balance = 0;
+    addressTransactions.forEach(transaction => {
+        if (transaction.recipient === address) balance += transaction.amount;
+        else if (transaction.sender === address) balance -= transaction.amount;
+    });
 
-	return {
-		addressTransactions: addressTransactions,
-		addressBalance: balance
-	};
+    return {
+        addressTransactions: addressTransactions,
+        addressBalance: balance,
+        addressSocit: this.getSocitData(address)
+    };
 };
 
 
+Blockchain.prototype.getSocitData = function (address) {
+    const socitData = [];
+    this.chain.forEach(block => {
+        block.socits.forEach(socit => {
+            if (socit.sender == address) {
+                socitData.push(socit);
+            }
+        });
+    });
+    return {
+        socitData: socitData,
+    }
+};
 
+Blockchain.prototype.createNewWallet = function (username) {
+    let  message="";
+    let registered = false;
+    this.userWallet.forEach(user => {
+        if(user.username===username){
+            registered=true;
+            message="User already registered";
+        }
+    });
+    if(registered==false){
+        this.userRegister(username);
+        message="User registered"
+    }
+return message;
+}
+Blockchain.prototype.userRegister = function (username) {
+    const privateKey = sha256(username + Date.now().toString());
+    const wallet = {
+        username: username,
+        privateKey: privateKey
+    };
+    this.userWallet.push(wallet);
+    return wallet;
+}
 
 
 module.exports = Blockchain;
