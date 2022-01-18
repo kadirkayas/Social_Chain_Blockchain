@@ -5,27 +5,31 @@ const uuid = require('uuid').v1;
 //Blockchain nesnesi
 function Blockchain() {
     this.chain = [];
-    this.pendingTransactions = [];
+    this.pendingTransactions = [{
+        "amount": 1000,
+        "sender": "kadir",
+        "recipient": "kadir",
+        "privateKey": "kadir"
+    }];
     this.pendingSocit = [];
     this.currentNodeUrl = currentNodeUrl;
     this.networkNodes = [];
-    this.userWallet = [
-        {
+    this.userWallet = [{
             username: "kadir",
-            privateKey: "admasdsadasd"
+            privateKey: "kadir"
         },
         {
-            username: "ikikadir",
-            privateKey: "asdadsaghgre"
+            username: "deneme",
+            privateKey: "deneme"
         }
     ];
 
 
-this.createNewBlock(100, '0', '0');
+    this.createNewBlock(100, '0', '0');
 }
 
 //yeni block ekleme fonksiyonu
-Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) {
+Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
     // yeni bloğun içerisindeki dataları sakladığımız alan
     const newBlock = {
         index: this.chain.length + 1,
@@ -45,12 +49,12 @@ Blockchain.prototype.createNewBlock = function (nonce, previousBlockHash, hash) 
 }
 
 //son bloğun indexini getirme fonksionu
-Blockchain.prototype.getLastBlock = function () {
+Blockchain.prototype.getLastBlock = function() {
     return this.chain[this.chain.length - 1];
 };
 
 //yeni gönderim işlemi oluşturma fonksiyonu
-Blockchain.prototype.createNewTransaction = function (amount, sender, recipient) {
+Blockchain.prototype.createNewTransaction = function(amount, sender, recipient) {
     const newTransaction = {
         amount: amount,
         sender: sender,
@@ -61,12 +65,12 @@ Blockchain.prototype.createNewTransaction = function (amount, sender, recipient)
 };
 
 //yeni gönderimi pendinge alma fonklsiyonu
-Blockchain.prototype.addTransactionToPendingTransactions = function (transactionObj) {
+Blockchain.prototype.addTransactionToPendingTransactions = function(transactionObj) {
     this.pendingTransactions.push(transactionObj);
     return this.getLastBlock()['index'] + 1;
 };
 //yeni socit işlemi oluşturma fonksiyonu
-Blockchain.prototype.createNewSocit = function (message, sender) {
+Blockchain.prototype.createNewSocit = function(message, sender) {
     const newSocit = {
         message: message,
         sender: sender,
@@ -75,19 +79,19 @@ Blockchain.prototype.createNewSocit = function (message, sender) {
     return newSocit;
 };
 //yeni sociti pendinge alma fonklsiyonu
-Blockchain.prototype.addSocitToPendingSocit = function (socitObj) {
+Blockchain.prototype.addSocitToPendingSocit = function(socitObj) {
     this.pendingSocit.push(socitObj);
     return this.getLastBlock()['index'] + 1;
 };
 
 //hashleme fonksiyonu
-Blockchain.prototype.hashBlock = function (previousBlockHash, currentBlockData, nonce) {
-    const dataAsString = previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData);
-    const hash = sha256(dataAsString);
-    return hash;
-}
-//pow yani nonce değeri hesaplandığı yer
-Blockchain.prototype.proofOfWork = function (previousBlockHash, currentBlockData) {
+Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce) {
+        const dataAsString = previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData);
+        const hash = sha256(dataAsString);
+        return hash;
+    }
+    //pow yani nonce değeri hesaplandığı yer
+Blockchain.prototype.proofOfWork = function(previousBlockHash, currentBlockData) {
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
     while (hash.substring(0, 4) !== '0000') {
@@ -98,7 +102,7 @@ Blockchain.prototype.proofOfWork = function (previousBlockHash, currentBlockData
 }
 
 //zincirin doğruluğunun kanıtlandığı yer 
-Blockchain.prototype.chainIsValid = function (blockchain) {
+Blockchain.prototype.chainIsValid = function(blockchain) {
     let validChain = true;
     for (var i = 1; i < blockchain.length; i++) {
         const currentBlock = blockchain[i];
@@ -122,7 +126,7 @@ Blockchain.prototype.chainIsValid = function (blockchain) {
 }
 
 // blok detaylarının hash ile sorgulandığı yer
-Blockchain.prototype.getBlock = function (blockHash) {
+Blockchain.prototype.getBlock = function(blockHash) {
     let correctBlock = null;
     this.chain.forEach(block => {
         if (block.hash === blockHash) correctBlock = block;
@@ -130,7 +134,7 @@ Blockchain.prototype.getBlock = function (blockHash) {
     return correctBlock;
 };
 //gönderimlerin transacitonid ile sorgulandığı yer
-Blockchain.prototype.getTransaction = function (transactionId) {
+Blockchain.prototype.getTransaction = function(transactionId) {
     let correctTransaction = null;
     let correctBlock = null;
 
@@ -149,7 +153,7 @@ Blockchain.prototype.getTransaction = function (transactionId) {
     };
 };
 //adress işlemlerinin ve net bakiyenin sorgulandığı yer
-Blockchain.prototype.getAddressData = function (address) {
+Blockchain.prototype.getAddressData = function(address) {
     const addressTransactions = [];
     this.chain.forEach(block => {
         block.transactions.forEach(transaction => {
@@ -173,7 +177,7 @@ Blockchain.prototype.getAddressData = function (address) {
 };
 
 
-Blockchain.prototype.getSocitData = function (address) {
+Blockchain.prototype.getSocitData = function(address) {
     const socitData = [];
     this.chain.forEach(block => {
         block.socits.forEach(socit => {
@@ -187,22 +191,21 @@ Blockchain.prototype.getSocitData = function (address) {
     }
 };
 
-Blockchain.prototype.createNewWallet = function (username) {
-    let  message="";
+Blockchain.prototype.createNewWallet = function(username) {
+    let message = "";
     let registered = false;
     this.userWallet.forEach(user => {
-        if(user.username===username){
-            registered=true;
-            message="User already registered";
+        if (user.username === username) {
+            registered = true;
+            message = "User already registered";
         }
     });
-    if(registered==false){
-        this.userRegister(username);
-        message="User registered"
+    if (registered == false) {
+        message = "User registered user private key  =>  " + this.userRegister(username).privateKey;
     }
-return message;
+    return message;
 }
-Blockchain.prototype.userRegister = function (username) {
+Blockchain.prototype.userRegister = function(username) {
     const privateKey = sha256(username + Date.now().toString());
     const wallet = {
         username: username,
