@@ -229,8 +229,8 @@ app.post('/comment/broadcast', function(req, res) {
 
 app.get('/mine', function(req, res) {
     mining();
+    setInterval(mining, 5000);
 
-    //setInterval(mining,5000);
     function mining() {
         const lastBlock = socialchain.getLastBlock();
         const previousBlockHash = lastBlock['hash'];
@@ -412,7 +412,6 @@ app.post('/wallet', function(req, res) {
     });
 
 });
-
 
 
 

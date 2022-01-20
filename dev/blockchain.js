@@ -2,7 +2,6 @@ const sha256 = require('sha256');
 const currentNodeUrl = process.argv[3];
 const uuid = require('uuid').v1;
 
-//Blockchain nesnesi
 function Blockchain() {
     this.chain = [];
     this.pendingTransactions = [{
@@ -56,6 +55,23 @@ Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
 Blockchain.prototype.getLastBlock = function() {
     return this.chain[this.chain.length - 1];
 };
+
+//hashleme fonksiyonu
+Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce) {
+        const dataAsString = previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData);
+        const hash = sha256(dataAsString);
+        return hash;
+    }
+    //pow yani nonce değeri hesaplandığı yer
+Blockchain.prototype.proofOfWork = function(previousBlockHash, currentBlockData) {
+    let nonce = 0;
+    let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
+    while (hash.substring(0, 4) !== '0000') {
+        nonce++;
+        hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
+    }
+    return nonce;
+}
 
 //yeni gönderim işlemi oluşturma fonksiyonu
 Blockchain.prototype.createNewTransaction = function(amount, sender, recipient) {
@@ -115,22 +131,6 @@ Blockchain.prototype.addLikeToPendingLike = function(likeObj) {
     return this.getLastBlock()['index'] + 1
 }
 
-//hashleme fonksiyonu
-Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce) {
-        const dataAsString = previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData);
-        const hash = sha256(dataAsString);
-        return hash;
-    }
-    //pow yani nonce değeri hesaplandığı yer
-Blockchain.prototype.proofOfWork = function(previousBlockHash, currentBlockData) {
-    let nonce = 0;
-    let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
-    while (hash.substring(0, 4) !== '0000') {
-        nonce++;
-        hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
-    }
-    return nonce;
-}
 
 //zincirin doğruluğunun kanıtlandığı yer 
 Blockchain.prototype.chainIsValid = function(blockchain) {
