@@ -68,7 +68,6 @@ app.post('/transaction/broadcast', function(req, res) {
         res.json({ note: 'Transaction not created' });
     }
 });
-
 app.post('/socit', function(req, res) {
     const newSocit = req.body;
     const blockIndex = socialchain.addSocitToPendingSocit(newSocit);
@@ -113,6 +112,117 @@ app.post('/socit/broadcast', function(req, res) {
         res.json({ note: 'Socit not saved' });
     }
 });
+app.post('/like', function(req, res) {
+    const newLike = req.body;
+    const blockIndex = socialchain.addLikeToPendingLike(newLike);
+    res.json({ note: `Socit will be added in block ${blockIndex}.` });
+});
+
+
+app.post('/like/broadcast', function(req, res) {
+    const user = socialchain.userWallet;
+    let saved = false;
+    for (let i = 0; i < user.length; i++) {
+        if (user[i].username === req.body.sender && user[i].privateKey === req.body.privateKey) {
+            socialchain.chain.forEach(block => {
+                block.socits.forEach(socit => {
+                    if (socit.socitId == req.body.socitId) {
+                        saved = true;
+                        likeSaved();
+                    }
+                })
+            });
+        } else
+            saved = false;
+    }
+    if (saved == false) {
+        likeNotSave();
+    }
+
+    function likeSaved() {
+        const newLike = socialchain.createNewLike(req.body.sender, req.body.socitId);
+        socialchain.addLikeToPendingLike(newLike);
+        const requestPromises = [];
+        socialchain.networkNodes.forEach(networkNodeUrl => {
+            const requestOptions = {
+                uri: networkNodeUrl + '/like',
+                method: 'POST',
+                body: newLike,
+                json: true
+            };
+            requestPromises.push(rp(requestOptions));
+        });
+        Promise.all(requestPromises)
+            .then(data => {
+                res.json({ note: 'Like sending and broadcast successfully.' });
+            });
+    }
+
+    function likeNotSave() {
+        res.json({ note: 'Like not saved' });
+    }
+});
+
+
+
+
+
+
+
+app.post('/comment', function(req, res) {
+    const newComment = req.body;
+    const blockIndex = socialchain.addCommentToPendingComment(newComment);
+    res.json({ note: `Comment will be added in block ${blockIndex}.` });
+});
+
+app.post('/comment/broadcast', function(req, res) {
+    const user = socialchain.userWallet;
+    let saved = false;
+    for (let i = 0; i < user.length; i++) {
+        if (user[i].username === req.body.sender && user[i].privateKey === req.body.privateKey) {
+            socialchain.chain.forEach(block => {
+                block.socits.forEach(socit => {
+                    if (socit.socitId == req.body.socitId) {
+                        saved = true;
+                        commentSaved();
+                    }
+                });
+            });
+            break;
+        } else
+            saved = false;
+    }
+    if (saved == false) {
+        commentNotSave();
+    }
+
+    function commentSaved() {
+        const newComment = socialchain.createNewComment(req.body.message, req.body.sender, req.body.socitId);
+        socialchain.addCommentToPendingComment(newComment);
+        const requestPromises = [];
+        socialchain.networkNodes.forEach(networkNodeUrl => {
+            const requestOptions = {
+                uri: networkNodeUrl + '/comment',
+                method: 'POST',
+                body: newComment,
+                json: true
+            };
+            requestPromises.push(rp(requestOptions));
+        });
+        Promise.all(requestPromises)
+            .then(data => {
+                res.json({ note: 'Comment created and broadcast successfully.' });
+            });
+    }
+
+    function commentNotSave() {
+        res.json({ note: 'Comment not saved' });
+    }
+});
+
+
+
+
 
 
 
@@ -193,6 +303,7 @@ app.post('/receive-new-block', function(req, res) {
     }
 });
 
+// REGİSTER NODE 
 app.post('/register-and-broadcast-node', function(req, res) {
     const newNodeUrl = req.body.newNodeUrl;
     if (socialchain.networkNodes.indexOf(newNodeUrl) == -1) socialchain.networkNodes.push(newNodeUrl);
@@ -262,12 +373,14 @@ app.get('/consensus', function(req, res) {
             let maxChainLengt = currentChainLengt;
             let newLongestChain = null;
             let newPendingTransactions = null;
+            let newPengingSocit = null;
 
             blockchains.forEach(blockchain => {
                 if (blockchain.chain.length > maxChainLengt) {
                     maxChainLengt = blockchain.chain.length;
                     newLongestChain = blockchain.chain;
                     newPendingTransactions = blockchain.pendingTransactions;
+                    newPengingSocit = blockchain.pendingSocit;
                 }
             });
             if (!newLongestChain || (newLongestChain && !socialchain.chainIsValid(newLongestChain))) {
@@ -278,6 +391,8 @@ app.get('/consensus', function(req, res) {
             } else if (newLongestChain && socialchain.chainIsValid(newLongestChain)) {
                 socialchain.chain = newLongestChain;
                 socialchain.pendingTransactions = newPendingTransactions;
+                socialchain.pendingSocit = newPengingSocit;
+
                 res.json({
                     note: 'This chain has been replaced',
                     chain: socialchain.chain,
@@ -331,6 +446,13 @@ app.get('/socits/:address', function(req, res) {
     const socitData = socialchain.getSocitData(address);
     res.json({
         socitData: socitData
+    });
+});
+app.get('/socit/:socitId', function(req, res) {
+    const socitId = req.params.socitId;
+    const data = socialchain.getSocitId(socitId);
+    res.json({
+        socit: data,
     });
 });
 app.get('/balance/:address', function(req, res) {

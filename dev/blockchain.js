@@ -12,6 +12,8 @@ function Blockchain() {
         "privateKey": "kadir"
     }];
     this.pendingSocit = [];
+    this.pendingComment = [];
+    this.pendingLikes = [];
     this.currentNodeUrl = currentNodeUrl;
     this.networkNodes = [];
     this.userWallet = [{
@@ -24,25 +26,27 @@ function Blockchain() {
         }
     ];
 
-
     this.createNewBlock(100, '0', '0');
 }
 
 //yeni block ekleme fonksiyonu
 Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
-    // yeni bloğun içerisindeki dataları sakladığımız alan
     const newBlock = {
         index: this.chain.length + 1,
         timestamp: Date.now(),
         transactions: this.pendingTransactions,
         socits: this.pendingSocit,
+        comments: this.pendingComment,
+        likes: this.pendingLikes,
         nonce: nonce,
         hash: hash,
         previousBlockHash: previousBlockHash
     };
-    //bekleyen işlemleri temizleyip yeni bloğu ağa ekleme kısmı
+    //bekleyen işlemleri temizleyip yeni bloğu ağa ekleme 
     this.pendingTransactions = [];
     this.pendingSocit = [];
+    this.pendingComment = [];
+    this.pendingLikes = [];
     this.chain.push(newBlock);
 
     return newBlock;
@@ -83,6 +87,33 @@ Blockchain.prototype.addSocitToPendingSocit = function(socitObj) {
     this.pendingSocit.push(socitObj);
     return this.getLastBlock()['index'] + 1;
 };
+//yeni yorumu oluşturma işlemi
+Blockchain.prototype.createNewComment = function(message, sender, socitId) {
+        const newComment = {
+            message: message,
+            sender: sender,
+            socitId: socitId,
+            commentId: uuid().split('-').join('')
+        };
+        return newComment;
+    }
+    //yeni yorumu pendinge alma
+Blockchain.prototype.addCommentToPendingComment = function(commentObj) {
+        this.pendingComment.push(commentObj);
+        return this.getLastBlock()['index'] + 1;
+    }
+    //Beğeni atma
+Blockchain.prototype.createNewLike = function(sender, socitId) {
+    const newLike = {
+        sender: sender,
+        socitId: socitId
+    };
+    return newLike;
+}
+Blockchain.prototype.addLikeToPendingLike = function(likeObj) {
+    this.pendingLikes.push(likeObj);
+    return this.getLastBlock()['index'] + 1
+}
 
 //hashleme fonksiyonu
 Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce) {
@@ -118,9 +149,8 @@ Blockchain.prototype.chainIsValid = function(blockchain) {
     const correctNonce = genesisBlock['nonce'] === 100;
     const correctPreviousBlockHash = genesisBlock['previousBlockHash'] === '0';
     const correctHash = genesisBlock['hash'] === '0';
-    const correctTransactions = genesisBlock['transactions'].length === 0;
 
-    if (!correctNonce || !correctPreviousBlockHash || !correctHash || !correctTransactions)
+    if (!correctNonce || !correctPreviousBlockHash || !correctHash)
         validChain = false;
     return validChain;
 }
@@ -155,6 +185,7 @@ Blockchain.prototype.getTransaction = function(transactionId) {
 //adress işlemlerinin ve net bakiyenin sorgulandığı yer
 Blockchain.prototype.getAddressData = function(address) {
     const addressTransactions = [];
+
     this.chain.forEach(block => {
         block.transactions.forEach(transaction => {
             if (transaction.sender === address || transaction.recipient === address) {
@@ -187,7 +218,38 @@ Blockchain.prototype.getSocitData = function(address) {
         });
     });
     return {
+        socitData: socitData
+    }
+};
+Blockchain.prototype.getSocitId = function(socitId) {
+    let socitData;
+    const commentData = [];
+    let totalLike = 0;
+    this.chain.forEach(block => {
+        block.socits.forEach(socit => {
+            if (socit.socitId == socitId) {
+                socitData = socit;
+            }
+        });
+    });
+    this.chain.forEach(block => {
+        block.comments.forEach(comment => {
+            if (comment.socitId == socitId) {
+                commentData.push(comment);
+            }
+        })
+    })
+    this.chain.forEach(block => {
+        block.likes.forEach(like => {
+            if (like.socitId == socitId) {
+                totalLike++;
+            }
+        })
+    })
+    return {
         socitData: socitData,
+        commentData: commentData,
+        totalLike: totalLike
     }
 };
 
