@@ -28,7 +28,6 @@ function Blockchain() {
     this.createNewBlock(100, '0', '0');
 }
 
-//yeni block ekleme fonksiyonu
 Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
     const newBlock = {
         index: this.chain.length + 1,
@@ -41,7 +40,6 @@ Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
         hash: hash,
         previousBlockHash: previousBlockHash
     };
-    //bekleyen işlemleri temizleyip yeni bloğu ağa ekleme 
     this.pendingTransactions = [];
     this.pendingSocit = [];
     this.pendingComment = [];
@@ -51,18 +49,15 @@ Blockchain.prototype.createNewBlock = function(nonce, previousBlockHash, hash) {
     return newBlock;
 }
 
-//son bloğun indexini getirme fonksionu
 Blockchain.prototype.getLastBlock = function() {
     return this.chain[this.chain.length - 1];
 };
 
-//hashleme fonksiyonu
 Blockchain.prototype.hashBlock = function(previousBlockHash, currentBlockData, nonce) {
         const dataAsString = previousBlockHash + nonce.toString() + JSON.stringify(currentBlockData);
         const hash = sha256(dataAsString);
         return hash;
     }
-    //pow yani nonce değeri hesaplandığı yer
 Blockchain.prototype.proofOfWork = function(previousBlockHash, currentBlockData) {
     let nonce = 0;
     let hash = this.hashBlock(previousBlockHash, currentBlockData, nonce);
@@ -73,7 +68,6 @@ Blockchain.prototype.proofOfWork = function(previousBlockHash, currentBlockData)
     return nonce;
 }
 
-//yeni gönderim işlemi oluşturma fonksiyonu
 Blockchain.prototype.createNewTransaction = function(amount, sender, recipient) {
     const newTransaction = {
         amount: amount,
@@ -84,7 +78,6 @@ Blockchain.prototype.createNewTransaction = function(amount, sender, recipient) 
     return newTransaction;
 };
 
-//yeni gönderimi pendinge alma fonklsiyonu
 Blockchain.prototype.addTransactionToPendingTransactions = function(transactionObj) {
     this.pendingTransactions.push(transactionObj);
     return this.getLastBlock()['index'] + 1;
@@ -98,11 +91,10 @@ Blockchain.prototype.createNewSocit = function(message, sender) {
     };
     return newSocit;
 };
-//yeni sociti pendinge alma fonklsiyonu
 Blockchain.prototype.addSocitToPendingSocit = function(socitObj) {
     this.pendingSocit.push(socitObj);
     return this.getLastBlock()['index'] + 1;
-};
+}
 //yeni yorumu oluşturma işlemi
 Blockchain.prototype.createNewComment = function(message, sender, socitId) {
         const newComment = {
@@ -113,12 +105,10 @@ Blockchain.prototype.createNewComment = function(message, sender, socitId) {
         };
         return newComment;
     }
-    //yeni yorumu pendinge alma
 Blockchain.prototype.addCommentToPendingComment = function(commentObj) {
         this.pendingComment.push(commentObj);
         return this.getLastBlock()['index'] + 1;
     }
-    //Beğeni atma
 Blockchain.prototype.createNewLike = function(sender, socitId) {
     const newLike = {
         sender: sender,
@@ -131,8 +121,6 @@ Blockchain.prototype.addLikeToPendingLike = function(likeObj) {
     return this.getLastBlock()['index'] + 1
 }
 
-
-//zincirin doğruluğunun kanıtlandığı yer 
 Blockchain.prototype.chainIsValid = function(blockchain) {
     let validChain = true;
     for (var i = 1; i < blockchain.length; i++) {
@@ -155,7 +143,6 @@ Blockchain.prototype.chainIsValid = function(blockchain) {
     return validChain;
 }
 
-// blok detaylarının hash ile sorgulandığı yer
 Blockchain.prototype.getBlock = function(blockHash) {
     let correctBlock = null;
     this.chain.forEach(block => {
@@ -163,7 +150,6 @@ Blockchain.prototype.getBlock = function(blockHash) {
     });
     return correctBlock;
 };
-//gönderimlerin transacitonid ile sorgulandığı yer
 Blockchain.prototype.getTransaction = function(transactionId) {
     let correctTransaction = null;
     let correctBlock = null;
@@ -182,7 +168,6 @@ Blockchain.prototype.getTransaction = function(transactionId) {
         block: correctBlock
     };
 };
-//adress işlemlerinin ve net bakiyenin sorgulandığı yer
 Blockchain.prototype.getAddressData = function(address) {
     const addressTransactions = [];
 
